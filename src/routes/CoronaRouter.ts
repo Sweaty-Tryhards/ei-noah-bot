@@ -5,12 +5,12 @@ import parse from 'csv-parse/lib/sync';
 import { Client } from 'discord.js';
 import { Connection, IDatabaseDriver, MikroORM } from '@mikro-orm/core';
 import UserCoronaRegions from '../entity/UserCoronaRegions';
-import Router, { Handler } from '../Router';
+import Router, { BothHandler } from '../router/Router';
 import CoronaData, { CoronaInfo } from '../entity/CoronaData';
 
 const router = new Router();
 
-const helpHandler : Handler = () => [
+const helpHandler : BothHandler = () => [
   '**Krijg iedere morgen een rapportage over de locale corona situatie**',
   'Mogelijke Commandos:',
   '`ei corona regions`: Vraag alle mogelijke regio\'s op',
@@ -21,7 +21,7 @@ const helpHandler : Handler = () => [
 router.use(null, helpHandler);
 router.use('help', helpHandler);
 
-const addHandler : Handler = async ({
+const addHandler : BothHandler = async ({
   user, params, em,
 }) => {
   if (!params.every((param) : param is string => typeof param === 'string')) {
@@ -29,8 +29,8 @@ const addHandler : Handler = async ({
   }
 
   const region = params.filter((param) : param is string => typeof param === 'string').join(' ');
-  await user.coronaRegions.init();
-  const currentRegions = user.coronaRegions.getItems()
+  if (!(await user).coronaRegions.isInitialized()) { await (await user).coronaRegions.init(); }
+  const currentRegions = (await user).coronaRegions.getItems()
     .find((r) => r.region.toLowerCase() === region.toLowerCase());
 
   if (currentRegions) {
@@ -47,7 +47,7 @@ const addHandler : Handler = async ({
   const newRegion = new UserCoronaRegions();
 
   newRegion.region = coronaReport.community;
-  newRegion.user = user;
+  newRegion.user = await user;
 
   em.persist(newRegion);
 
@@ -57,7 +57,7 @@ const addHandler : Handler = async ({
 router.use('add', addHandler);
 router.use('toevoegen', addHandler);
 
-const removeHandler : Handler = async ({
+const removeHandler : BothHandler = async ({
   user, params, em,
 }) => {
   if (!params.every((param) : param is string => typeof param === 'string')) {
@@ -65,8 +65,8 @@ const removeHandler : Handler = async ({
   }
 
   const region = params.filter((param) : param is string => typeof param === 'string').join(' ');
-  await user.coronaRegions.init();
-  const dbRegion = user.coronaRegions.getItems()
+  if (!(await user).coronaRegions.isInitialized()) { await (await user).coronaRegions.init(); }
+  const dbRegion = (await user).coronaRegions.getItems()
     .find((r) => r.region.toLowerCase() === region.toLowerCase());
 
   if (!dbRegion) {
@@ -82,7 +82,7 @@ router.use('remove', removeHandler);
 router.use('verwijder', removeHandler);
 router.use('delete', removeHandler);
 
-const listRegionsHandler : Handler = async ({ msg, em }) => {
+const listRegionsHandler : BothHandler = async ({ msg, em }) => {
   const coronaData = await em.getRepository(CoronaData).findAll({ limit: 500 });
 
   const regions = Array.from(new Set<string>(coronaData.map((data) => data.community)))

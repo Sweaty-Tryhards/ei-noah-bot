@@ -7,3 +7,4 @@ dist
 *.sqlite-journal
 .DS_Store
 temp
+/.idea

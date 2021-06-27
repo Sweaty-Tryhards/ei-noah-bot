@@ -1,11 +1,12 @@
 import {
+  BaseEntity,
   Entity, ManyToOne, PrimaryKey, Property,
 } from '@mikro-orm/core';
 // eslint-disable-next-line import/no-cycle
 import { User } from './User';
 
 @Entity()
-class UserCoronaRegions {
+class UserCoronaRegions extends BaseEntity<UserCoronaRegions, 'id'> {
   @PrimaryKey()
   id!: number;
 

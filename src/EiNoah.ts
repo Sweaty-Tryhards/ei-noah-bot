@@ -5,8 +5,8 @@ import {
   Connection, IDatabaseDriver, MikroORM, EntityManager,
 } from '@mikro-orm/core';
 
-import { getCategoryData, getUserData, getUserGuildData } from './data';
-import Router, { Handler, RouteInfo } from './Router';
+import LazyRouteInfo from './router/LazyRouteInfo';
+import Router, { BothHandler, RouteInfo } from './router/Router';
 
 enum ErrorType {
   Uncaught,
@@ -29,7 +29,7 @@ const errorToChannel = async (channelId : string, client : Client, err : Error, 
 
 function mapParams(mention : string,
   client : Client,
-  guild : Guild | null) : Array<Promise<Role | DiscordUser | string | Channel | null>> {
+  guild : Guild | null) : Array<Promise<Role | DiscordUser | string | Channel>> {
   const seperated : string[] = [];
 
   const matches = mention.match(/<(@[!&]?|#)[0-9]+>/g);
@@ -54,9 +54,15 @@ function mapParams(mention : string,
     if (user) return client.users.fetch(user[1], true);
 
     const role = param.match(/<@&([0-9]+)>/);
-    if (role && guild) return guild.roles.fetch(role[1], true);
+    if (role && guild) {
+      return guild.roles.fetch(role[1], true).then((r) => {
+        if (!r) throw new Error('Role not found');
 
-    const channel = param.match(/<@&([0-9]+)>/);
+        return r;
+      });
+    }
+
+    const channel = param.match(/<#([0-9]+)>/);
     if (channel && guild) return client.channels.fetch(channel[1], true);
 
     return Promise.resolve(param);
@@ -92,13 +98,15 @@ async function messageParser(msg : Message, em: EntityManager) {
   const splitted = msg.content.split(' ').filter((param) => param);
 
   const flags = new Map<string, Array<Role | DiscordUser | string | Channel>>();
-  const nonFlags : Array<Role | DiscordUser | string | Channel> = [];
+  const params : Array<Role | DiscordUser | string | Channel> = [];
 
   splitted.shift();
 
   if (splitted[0] && splitted[0].toLowerCase() === 'noah') splitted.shift();
 
-  const resolved = await parseParams(splitted, msg.client, msg.guild);
+  const resolved = await parseParams(splitted, msg.client, msg.guild).catch(() => null);
+
+  if (!resolved) return null;
 
   let flag : string | null = null;
   resolved.forEach((param) => {
@@ -113,32 +121,15 @@ async function messageParser(msg : Message, em: EntityManager) {
       return;
     }
 
-    nonFlags.push(param);
+    params.push(param);
   });
 
-  let guildUser;
-  if (msg.guild) {
-    guildUser = await getUserGuildData(em, msg.author, msg.guild);
-  } else guildUser = null;
-
-  let category;
-  if (msg.channel instanceof TextChannel || msg.channel instanceof NewsChannel) {
-    category = await getCategoryData(em, msg.channel.parent);
-  } else category = null;
-
-  let user;
-  if (!guildUser) { user = await getUserData(em, msg.author); } else user = guildUser.user;
-
-  const routeInfo : RouteInfo = {
-    absoluteParams: nonFlags,
-    params: nonFlags,
+  const routeInfo : RouteInfo = new LazyRouteInfo({
+    params,
     msg,
     flags,
-    guildUser,
-    user,
-    category,
     em,
-  };
+  });
 
   return routeInfo;
 }
@@ -158,10 +149,10 @@ class EiNoah {
   }
 
   // this.use wordt doorgepaast aan de echte router
-  public use(route: typeof DiscordUser, using: Handler) : void
-  public use(route: typeof Role, using: Handler) : void
-  public use(route: null, using: Handler) : void
-  public use(route : string, using: Router | Handler) : void
+  public use(route: typeof DiscordUser, using: BothHandler) : void
+  public use(route: typeof Role, using: BothHandler) : void
+  public use(route: null, using: BothHandler) : void
+  public use(route : string, using: Router | BothHandler) : void
   public use(route : any, using: any) : any {
     this.router.use(route, using);
   }
@@ -204,10 +195,17 @@ class EiNoah {
           msg.channel.startTyping().catch(() => { });
           const em = orm.em.fork();
 
+          if (process.env.NODE_ENV !== 'production') console.time(`${msg.id}`);
+
           messageParser(msg, em)
-            // @ts-ignore
-            .then((info) => this.router.handle(info))
+            .then((info) => {
+              if (!info) return 'Ongeldige user(s), role(s) en/of channel(s) gegeven';
+
+              // @ts-ignore
+              return this.router.handle(info);
+            })
             .then((response) => {
+              console.timeEnd(`${msg.id}`);
               if (response) {
                 if (typeof (response) !== 'string') {
                   return msg.channel.send(response).catch(() => { });
@@ -223,6 +221,7 @@ class EiNoah {
               return em.flush();
             })
             .catch((err) => {
+              console.timeEnd(`${msg.id}`);
               // Dit wordt gecallt wanneer de parsing faalt
               if (process.env.NODE_ENV !== 'production') {
                 errorToChannel(msg.channel.id, msg.client, err).catch(() => { console.log('Error could not be send :('); });

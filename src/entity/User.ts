@@ -1,5 +1,5 @@
 import {
-  Entity, PrimaryKey, OneToMany, Property, Collection,
+  Entity, PrimaryKey, OneToMany, Property, Collection, BaseEntity,
 } from '@mikro-orm/core';
 // eslint-disable-next-line import/no-cycle
 import { GuildUser } from './GuildUser';
@@ -8,7 +8,7 @@ import UserCoronaRegions from './UserCoronaRegions';
 
 @Entity()
 // eslint-disable-next-line import/prefer-default-export
-export class User {
+export class User extends BaseEntity<User, 'id'> {
   @PrimaryKey()
   id!: string;
 

@@ -1,12 +1,14 @@
 import {
-  Entity, PrimaryKey, Property, OneToMany, Collection,
+  Entity, PrimaryKey, Property, OneToMany, Collection, BaseEntity,
 } from '@mikro-orm/core';
+// eslint-disable-next-line import/no-cycle
+import CustomRole from './CustomRole';
 // eslint-disable-next-line import/no-cycle
 import { GuildUser } from './GuildUser';
 
 @Entity()
 // eslint-disable-next-line import/prefer-default-export
-export class Guild {
+export class Guild extends BaseEntity<Guild, 'id'> {
   @PrimaryKey()
   id!: string;
 
@@ -22,6 +24,10 @@ export class Guild {
   @OneToMany(() => GuildUser, (gu) => gu.guild)
   guildUsers = new Collection<GuildUser>(this);
 
+  @OneToMany(() => CustomRole, (cr) => cr.guild)
+  customRoles = new Collection<CustomRole>(this);
+
+  // TODO: NA CUSTOM ROLE UPDATE DIT WEGHALEN
   @Property()
   publicVoice?: string;
 
@@ -33,4 +39,17 @@ export class Guild {
 
   @Property()
   lobbyCategory?: string;
+  // TOT HIER
+
+  @Property()
+  roleMenuId?: string;
+
+  @Property()
+  defaultColor?: string;
+
+  @Property()
+  requiredRole?: string;
+
+  @Property()
+  category?: string;
 }

@@ -1,5 +1,5 @@
 import {
-  Entity, ManyToOne, OneToMany, Collection, PrimaryKey, Unique, OneToOne,
+  Entity, ManyToOne, OneToMany, Collection, PrimaryKey, Unique, OneToOne, BaseEntity,
 } from '@mikro-orm/core';
 // eslint-disable-next-line import/no-cycle
 import { User } from './User';
@@ -13,18 +13,18 @@ import TempChannel from './TempChannel';
 @Entity()
 @Unique({ properties: ['guild', 'user'] })
 // eslint-disable-next-line import/prefer-default-export
-export class GuildUser {
+export class GuildUser extends BaseEntity<GuildUser, 'id'> {
   @PrimaryKey()
   id!: number;
 
-  @ManyToOne({ eager: true, entity: 'Guild' })
+  @ManyToOne({ entity: 'Guild' })
   guild!: Guild;
 
-  @ManyToOne({ eager: true, entity: 'User' })
+  @ManyToOne({ entity: 'User' })
   user!: User;
 
   @OneToOne({
-    entity: 'TempChannel', mappedBy: 'guildUser', eager: true,
+    entity: 'TempChannel', mappedBy: 'guildUser',
   })
   tempChannel?: TempChannel;
 

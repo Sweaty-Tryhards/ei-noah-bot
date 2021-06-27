@@ -1,4 +1,6 @@
-import { Entity, PrimaryKey, Property } from '@mikro-orm/core';
+import {
+  BaseEntity, Entity, PrimaryKey, Property,
+} from '@mikro-orm/core';
 
 export interface CoronaInfo {
   Date_of_publication: string
@@ -10,8 +12,9 @@ export interface CoronaInfo {
 }
 
 @Entity()
-class CoronaData {
+class CoronaData extends BaseEntity<CoronaData, 'id'> {
   constructor(coronaInfo : CoronaInfo) {
+    super();
     this.community = coronaInfo.Municipality_name;
     this.totalReported = coronaInfo.Total_reported;
     this.hospitalAdmissions = coronaInfo.Hospital_admission;

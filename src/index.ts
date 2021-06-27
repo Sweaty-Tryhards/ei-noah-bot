@@ -7,7 +7,7 @@ import { fork } from 'child_process';
 import {
   CanvasRenderingContext2D, createCanvas, loadImage,
 } from 'canvas';
-import { Handler } from 'Router';
+import { BothHandler } from 'router/Router';
 import { fillTextWithTwemoji, strokeTextWithTwemoji, measureText } from 'node-canvas-with-twemoji-and-discord-emoji';
 import EiNoah from './EiNoah';
 import LobbyRouter from './routes/LobbyRouter';
@@ -79,7 +79,7 @@ const mentionsToText = (params : Array<string | User | Role | Channel>, startAt 
 
   // Hier is een 'Handler' als argument in principe is dit een eindpunt van de routing.
   // Dit is waar berichten worden afgehandeld
-  const stabHandler : Handler = async ({ params, msg, flags }) => {
+  const stabHandler : BothHandler = async ({ params, msg, flags }) => {
     const [user] = params;
     if (user instanceof User) {
       const url = user.avatarURL({ size: 256, dynamic: false, format: 'png' });
@@ -148,7 +148,7 @@ const mentionsToText = (params : Array<string | User | Role | Channel>, startAt 
 
   const hugImg = loadImage('./src/images/hug.png');
 
-  const hugHandler : Handler = async ({ params, msg, flags }) => {
+  const hugHandler : BothHandler = async ({ params, msg, flags }) => {
     const [user] = params;
     if (user instanceof User) {
       const url = user.avatarURL({ size: 256, dynamic: false, format: 'png' });
